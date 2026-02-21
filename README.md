@@ -1,5 +1,5 @@
 <h1>
-  <img src="src/cubentube.png" alt="CubeNTube logo" width="48" valign="middle">&nbsp;
+  <img src="src/cubentube.png" alt="CubeNTube logo" width="86" valign="middle">&nbsp;
   Cube'n Tube — Shape Erasers for ChimeraX
 </h1>
 
