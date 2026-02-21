@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="src/cubentube.png" alt="CubeNTube logo" width="128">
+</p>
+
 # Cube'n Tube — Shape Erasers for ChimeraX
 
 A ChimeraX plugin that extends the built-in map eraser with three additional eraser shapes: **cube**, **cylinder**, and **custom volume**. All three are accessible from a single unified panel with a shape dropdown.

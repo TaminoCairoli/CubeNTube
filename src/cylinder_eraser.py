@@ -216,10 +216,12 @@ class MapCylinderEraser(MouseMode):
         return map_cylinder_eraser_panel(self.session)
 
     def enable(self):
+        from chimerax.core.commands import run
+        run(self.session, 'ui tool show "CubeNTube"')
         from .gui_panel import map_shape_eraser_panel
-        sp = map_shape_eraser_panel(self.session)
-        sp._shape_combo.setCurrentIndex(1)
-        sp.show()
+        sp = map_shape_eraser_panel(self.session, create=False)
+        if sp is not None:
+            sp._shape_combo.setCurrentIndex(1)
 
     def mouse_down(self, event):
         MouseMode.mouse_down(self, event)
