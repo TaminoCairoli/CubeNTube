@@ -21,7 +21,11 @@ A ChimeraX plugin that extends the built-in map eraser with three additional era
 
 After starting ChimeraX the **Cube'n Tube** button appears in the **Right Mouse > Map** toolbar section.
 
-You can also open the panel from the menu: **Tools > Volume Data > CubeNTube**.
+You can also open the panel from the menu: **Tools > Volume Data > CubeNTube**, or via the ChimeraX command line:
+
+```
+ui tool show "CubeNTube"
+```
 
 
 1. Open a density map in ChimeraX
