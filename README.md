@@ -43,7 +43,7 @@ src/
   cube_eraser.py       — Cube model, erase math, mouse mode, standalone panel
   cylinder_eraser.py   — Cylinder model, erase math, mouse mode, standalone panel
   custom_eraser.py     — Custom volume model, erase math, mouse mode, standalone panel
-  shape_eraser.py      — CubeNTube unified panel with shape dropdown (QComboBox + QStackedWidget)
+  gui_panel.py         — CubeNTube unified panel with shape dropdown (QComboBox + QStackedWidget)
 ```
 
 ## References

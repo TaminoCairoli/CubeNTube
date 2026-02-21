@@ -34,10 +34,7 @@
 
   <Classifiers>
     <PythonClassifier>Development Status :: 2 - Pre-Alpha</PythonClassifier>
-    <ChimeraXClassifier>Tool :: Cube Eraser :: Volume Data :: Erase part of a density map with a cube</ChimeraXClassifier>
-    <ChimeraXClassifier>Tool :: Cylinder Eraser :: Volume Data :: Erase part of a density map with a cylinder</ChimeraXClassifier>
-    <ChimeraXClassifier>Tool :: Custom Eraser :: Volume Data :: Erase part of a density map with a custom volume shape</ChimeraXClassifier>
-    <ChimeraXClassifier>Tool :: CubeNTube :: Volume Data :: Erase density map with a cube, a cylinder or a custom volume shape</ChimeraXClassifier>
+    <ChimeraXClassifier>Tool :: CubeNTube :: Volume Data :: Erase density map with a cube, cylinder or custom volume shape</ChimeraXClassifier>
     <ChimeraXClassifier>Command :: volume cube erase :: Volume Data :: Erase part of a density map within a cube</ChimeraXClassifier>
     <ChimeraXClassifier>Command :: volume cylinder erase :: Volume Data :: Erase part of a density map within a cylinder</ChimeraXClassifier>
   </Classifiers>

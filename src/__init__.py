@@ -5,17 +5,8 @@ class _CubeNTubeAPI(BundleAPI):
 
     @staticmethod
     def start_tool(session, tool_name):
-        if tool_name == "Cube Eraser":
-            from .cube_eraser import map_cube_eraser_panel
-            return map_cube_eraser_panel(session)
-        elif tool_name == "Cylinder Eraser":
-            from .cylinder_eraser import map_cylinder_eraser_panel
-            return map_cylinder_eraser_panel(session)
-        elif tool_name == "Custom Eraser":
-            from .custom_eraser import map_custom_eraser_panel
-            return map_custom_eraser_panel(session)
-        elif tool_name == "CubeNTube":
-            from .shape_eraser import map_shape_eraser_panel
+        if tool_name == "CubeNTube":
+            from .gui_panel import map_shape_eraser_panel
             return map_shape_eraser_panel(session)
 
     @staticmethod

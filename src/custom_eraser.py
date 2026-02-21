@@ -190,14 +190,14 @@ class MapCustomEraser(MouseMode):
 
     @property
     def settings(self):
-        from .shape_eraser import map_shape_eraser_panel
+        from .gui_panel import map_shape_eraser_panel
         sp = map_shape_eraser_panel(self.session, create=False)
         if sp is not None:
             return sp
         return map_custom_eraser_panel(self.session)
 
     def enable(self):
-        from .shape_eraser import map_shape_eraser_panel
+        from .gui_panel import map_shape_eraser_panel
         sp = map_shape_eraser_panel(self.session)
         sp._shape_combo.setCurrentIndex(2)
         sp.show()
