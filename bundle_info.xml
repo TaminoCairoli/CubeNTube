@@ -1,4 +1,4 @@
-<BundleInfo name="ChimeraX-CubeNTube" version="1.15.0" package="chimerax.cube_n_tube" minSessionVersion="1" maxSessionVersion="1" customInit="true">
+<BundleInfo name="ChimeraX-CubeNTube" version="0.1.0" package="chimerax.cube_n_tube" minSessionVersion="1" maxSessionVersion="1" customInit="true">
 
   <Author>Tamino Cairoli</Author>
   <Email>tcairoli@ethz.ch</Email>
