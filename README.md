@@ -8,8 +8,6 @@ A ChimeraX plugin that extends the built-in map eraser with three additional era
 - **Cylinder eraser** — frustum with independent top/bottom radii and length, optional radius lock
 - **Custom eraser** — use any displayed volume isosurface as the eraser shape, with uniform scaling
 - **Single-step undo** (Cmd+Z / Ctrl+Z) for all eraser shapes, including the built-in sphere eraser
-- Right-click drag to reposition the eraser in the viewport (Shift+drag for depth)
-- Erase inside, erase outside, or reduce map bounds to the eraser region
 
 ## Requirements
 
@@ -48,11 +46,17 @@ src/
   shape_eraser.py      — CubeNTube unified panel with shape dropdown (QComboBox + QStackedWidget)
 ```
 
+## References
+
+- UCSF ChimeraX: Structure visualization for researchers, educators, and developers. Pettersen EF, Goddard TD, Huang CC, Meng EC, Couch GS, Croll TI, Morris JH, Ferrin TE. Protein Sci. 2021 Jan;30(1):70-82.
+
+- UCSF ChimeraX: Meeting modern challenges in visualization and analysis. Goddard TD, Huang CC, Meng EC, Pettersen EF, Couch GS, Morris JH, Ferrin TE. Protein Sci. 2018 Jan;27(1):14-25.
+
 ## Acknowledgements
 
-This plugin was developed with AI assistance (Claude / Cursor). The core erase logic follows the same coordinate-transform approach used by ChimeraX's built-in sphere eraser.
+Big thanks to the amazing [ChimeraX](https://www.rbvi.ucsf.edu/chimerax/) development team — their extensive documentation made this project possible.
 
-ChimeraX is developed by the [UCSF Resource for Biocomputing, Visualization, and Informatics](https://www.rbvi.ucsf.edu/chimerax/).
+This plugin was developed with AI assistance (Claude / Cursor).
 
 ## License
 
