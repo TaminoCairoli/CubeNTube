@@ -1,0 +1,45 @@
+<BundleInfo name="ChimeraX-CubeNTube" version="1.15.0" package="chimerax.cube_n_tube" minSessionVersion="1" maxSessionVersion="1" customInit="true">
+
+  <Author>Tamino Cairoli</Author>
+  <Email>tcairoli@ethz.ch</Email>
+  <URL>https://your-website.com</URL>
+
+  <Synopsis>Cube, Cylinder and Custom volume eraser tools.</Synopsis>
+  <Description>A simple plugin that extends the eraser functionality of ChimeraX. It provides a cube, a cylinder and a custom shape eraser. The eraser tools are available in the Right Mouse toolbar.</Description>
+
+  <DataFiles>
+    <DataFile>cubentube.png</DataFile>
+  </DataFiles>
+
+  <Categories>
+    <Category name="Volume data"/>
+  </Categories>
+
+  <Dependencies>
+    <Dependency name="ChimeraX-Core" version="~=1.0"/>
+    <Dependency name="ChimeraX-Geometry" version="~=1.0"/>
+    <Dependency name="ChimeraX-MouseModes" version="~=1.0"/>
+    <Dependency name="ChimeraX-MapData" version="~=2.0"/>
+    <Dependency name="ChimeraX-UI" version="~=1.0"/>
+    <Dependency name="ChimeraX-Map" version="~=1.0"/>
+  </Dependencies>
+
+  <Providers manager="toolbar">
+    <Provider tab="Right Mouse" section="Map"
+      name="cnt1" mouse_mode="cube"
+      display_name="Cube'n Tube"
+      description="Erase parts of a density map with a cube, a cylinder or a custom shape"
+      after="Erase"/>
+  </Providers>
+
+  <Classifiers>
+    <PythonClassifier>Development Status :: 2 - Pre-Alpha</PythonClassifier>
+    <ChimeraXClassifier>Tool :: Cube Eraser :: Volume Data :: Erase part of a density map with a cube</ChimeraXClassifier>
+    <ChimeraXClassifier>Tool :: Cylinder Eraser :: Volume Data :: Erase part of a density map with a cylinder</ChimeraXClassifier>
+    <ChimeraXClassifier>Tool :: Custom Eraser :: Volume Data :: Erase part of a density map with a custom volume shape</ChimeraXClassifier>
+    <ChimeraXClassifier>Tool :: CubeNTube :: Volume Data :: Erase density map with a cube, a cylinder or a custom volume shape</ChimeraXClassifier>
+    <ChimeraXClassifier>Command :: volume cube erase :: Volume Data :: Erase part of a density map within a cube</ChimeraXClassifier>
+    <ChimeraXClassifier>Command :: volume cylinder erase :: Volume Data :: Erase part of a density map within a cylinder</ChimeraXClassifier>
+  </Classifiers>
+
+</BundleInfo>

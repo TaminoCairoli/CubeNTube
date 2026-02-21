@@ -1,0 +1,17 @@
+Clean install CubeNTube from source
+====================================
+See: https://www.cgl.ucsf.edu/chimerax/docs/devel/tutorials/tutorial_hello.html
+
+1. Quit ChimeraX completely.
+
+2. In a terminal, run:
+
+   cd /Users/Tamino/ChimeraX_Dev/CubeNTube
+   rm -rf build/ dist/ ChimeraX_CubeNTube.egg-info/
+   chimerax --nogui --exit --cmd "devel install . exit true"
+
+3. Start ChimeraX. The "Shape erase" button appears in the Right Mouse > Map toolbar.
+   You can also open it via: ui tool show "CubeNTube"
+
+Notes:
+- If you change code: bump version in bundle_info.xml, then repeat steps 1-3.
