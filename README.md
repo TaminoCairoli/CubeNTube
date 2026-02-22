@@ -45,7 +45,7 @@ For the **Custom** eraser, first display an isosurface on the volume you want to
 
 ### Cube Eraser
 
-<!-- https://github.com/user-attachments/assets/a6766285-aced-42ff-bcd0-31b29f4fa2b0 -->
+https://github.com/user-attachments/assets/a6766285-aced-42ff-bcd0-31b29f4fa2b0
 
 ### Custom Shape Eraser
 
