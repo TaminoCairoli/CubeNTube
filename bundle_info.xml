@@ -29,7 +29,7 @@
       name="cnt1" mouse_mode="cube"
       display_name="Cube'n Tube"
       description="Erase parts of a density map with a cube, a cylinder or a custom shape"
-      after="Erase"/>
+      after="Erase" before="Play series"/>
   </Providers>
 
   <Classifiers>
