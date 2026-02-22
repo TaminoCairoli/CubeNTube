@@ -11,29 +11,7 @@
 import numpy as np
 
 from chimerax.core.tools import ToolInstance
-from chimerax.core.undo import UndoAction
-
-
-class _VolumeEraseUndo(UndoAction):
-
-    def __init__(self, name, grid_data, saved_matrix):
-        super().__init__(name, can_redo=True)
-        self._grid_data = grid_data
-        self._saved_before = saved_matrix
-        self._saved_after = None
-
-    def undo(self):
-        m = self._grid_data.full_matrix()
-        self._saved_after = m.copy()
-        m[:] = self._saved_before
-        self._grid_data.values_changed()
-
-    def redo(self):
-        if self._saved_after is None:
-            return
-        m = self._grid_data.full_matrix()
-        m[:] = self._saved_after
-        self._grid_data.values_changed()
+from .undo import VolumeEraseUndo
 
 
 # Index constants for the stacked widget pages
@@ -799,7 +777,7 @@ class MapShapeEraserSettings(ToolInstance):
                                              delete_history=False)
             except Exception:
                 pass
-        action = _VolumeEraseUndo(name, grid_data, saved)
+        action = VolumeEraseUndo(name, grid_data, saved)
         self._last_undo_action = action
         self.session.undo.register(action)
 

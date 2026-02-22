@@ -62,7 +62,7 @@ class _CubeNTubeAPI(BundleAPI):
 
     @staticmethod
     def finish(session, bundle_info):
-        pass
+        _unpatch_sphere_eraser_undo(session)
 
     @staticmethod
     def register_command(command_name, logger):
@@ -134,8 +134,22 @@ def _patch_sphere_eraser_undo(session):
         self._last_undo_action = action
         self.session.undo.register(action)
 
+    MapEraserSettings._cubentube_orig_erase = MapEraserSettings._erase
     MapEraserSettings._erase = _erase_with_undo
     session.logger.info('CubeNTube: sphere eraser undo support enabled')
+
+
+def _unpatch_sphere_eraser_undo(session):
+    """Restore the original sphere eraser _erase method on bundle unload."""
+    try:
+        from chimerax.map_eraser.eraser import MapEraserSettings
+        orig = getattr(MapEraserSettings, '_cubentube_orig_erase', None)
+        if orig is not None:
+            MapEraserSettings._erase = orig
+            del MapEraserSettings._cubentube_orig_erase
+            session.logger.info('CubeNTube: sphere eraser undo patch removed')
+    except Exception:
+        pass
 
 
 bundle_api = _CubeNTubeAPI()

@@ -2,7 +2,7 @@
 
   <Author>Tamino Cairoli</Author>
   <Email>tcairoli@ethz.ch</Email>
-  <URL>https://your-website.com</URL>
+  <URL>https://github.com/TaminoCairoli/CubeNTube</URL>
 
   <Synopsis>Cube, Cylinder and Custom volume eraser tools.</Synopsis>
   <Description>A simple plugin that extends the eraser functionality of ChimeraX. It provides a cube, a cylinder and a custom shape eraser. The eraser tools are available in the Right Mouse toolbar.</Description>
@@ -22,6 +22,7 @@
     <Dependency name="ChimeraX-MapData" version="~=2.0"/>
     <Dependency name="ChimeraX-UI" version="~=1.0"/>
     <Dependency name="ChimeraX-Map" version="~=1.0"/>
+    <Dependency name="ChimeraX-MapEraser" version="~=2.0"/>
   </Dependencies>
 
   <Providers manager="toolbar">
