@@ -80,7 +80,7 @@ src/
 
 ## Acknowledgements
 
-Big thanks to the amazing [ChimeraX](https://www.rbvi.ucsf.edu/chimerax/) development team — their extensive documentation made this project possible.
+Big thanks to the amazing [ChimeraX](https://www.rbvi.ucsf.edu/chimerax/) development team, their extensive documentation made this project possible.
 
 This plugin was developed with AI assistance (Claude / Cursor).
 
