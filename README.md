@@ -49,7 +49,7 @@ https://github.com/user-attachments/assets/a6766285-aced-42ff-bcd0-31b29f4fa2b0
 
 ### Custom Shape Eraser
 
-<!-- https://github.com/user-attachments/assets/7de83679-cb35-4502-84a3-6afa47c0a1d3 -->
+https://github.com/user-attachments/assets/7de83679-cb35-4502-84a3-6afa47c0a1d3
 
 ## Project Structure
 
