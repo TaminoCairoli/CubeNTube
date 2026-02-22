@@ -22,7 +22,6 @@
     <Dependency name="ChimeraX-MapData" version="~=2.0"/>
     <Dependency name="ChimeraX-UI" version="~=1.0"/>
     <Dependency name="ChimeraX-Map" version="~=1.0"/>
-    <Dependency name="ChimeraX-MapEraser" version="~=2.0"/>
   </Dependencies>
 
   <Providers manager="toolbar">
