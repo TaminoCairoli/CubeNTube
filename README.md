@@ -45,11 +45,11 @@ For the **Custom** eraser, first display an isosurface on the volume you want to
 
 ### Cube Eraser
 
-https://github.com/TaminoCairoli/CubeNTube/raw/main/demonstration_video/CubeNTube_Cube.mp4
+<video src="https://raw.githubusercontent.com/TaminoCairoli/CubeNTube/main/demonstration_video/CubeNTube_Cube.mp4" controls autoplay loop muted playsinline width="100%"></video>
 
 ### Custom Shape Eraser
 
-https://github.com/TaminoCairoli/CubeNTube/raw/main/demonstration_video/CubeNTube_Custom.mp4
+<video src="https://raw.githubusercontent.com/TaminoCairoli/CubeNTube/main/demonstration_video/CubeNTube_Custom.mp4" controls autoplay loop muted playsinline width="100%"></video>
 
 ## Project Structure
 
