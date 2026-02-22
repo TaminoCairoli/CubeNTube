@@ -41,23 +41,42 @@ ui tool show "CubeNTube"
 
 For the **Custom** eraser, first display an isosurface on the volume you want to use as a mask, select it from the dropdown, and click **Set as eraser**.
 
+## Demos
+
+### Cube Eraser
+
+<video src="demonstration_video/CubeNTube_Cube.mov" autoplay loop muted playsinline width="100%"></video>
+
+### Custom Shape Eraser
+
+<video src="demonstration_video/CubeNTube_Custom.mov" autoplay loop muted playsinline width="100%"></video>
+
 ## Project Structure
 
 ```
 bundle_info.xml        — Bundle configuration (tools, commands, toolbar button)
 src/
   __init__.py          — Entry point: registers mouse modes and patches sphere undo
-  cube_eraser.py       — Cube model, erase math, mouse mode, standalone panel
-  cylinder_eraser.py   — Cylinder model, erase math, mouse mode, standalone panel
-  custom_eraser.py     — Custom volume model, erase math, mouse mode, standalone panel
-  gui_panel.py         — CubeNTube unified panel with shape dropdown (QComboBox + QStackedWidget)
+  undo.py              — Shared VolumeEraseUndo action (single-step undo/redo)
+  cube_eraser.py       — Cube model, erase math, mouse mode
+  cylinder_eraser.py   — Cylinder model, erase math, mouse mode
+  custom_eraser.py     — Custom volume model, erase math, mouse mode
+  gui_panel.py         — Unified panel with shape dropdown (QComboBox + QStackedWidget)
 ```
 
 ## References
 
-- UCSF ChimeraX: Structure visualization for researchers, educators, and developers. Pettersen EF, Goddard TD, Huang CC, Meng EC, Couch GS, Croll TI, Morris JH, Ferrin TE. Protein Sci. 2021 Jan;30(1):70-82.
+### Software
 
-- UCSF ChimeraX: Meeting modern challenges in visualization and analysis. Goddard TD, Huang CC, Meng EC, Pettersen EF, Couch GS, Morris JH, Ferrin TE. Protein Sci. 2018 Jan;27(1):14-25.
+- UCSF ChimeraX: Structure visualization for researchers, educators, and developers. Pettersen EF, Goddard TD, Huang CC, Meng EC, Couch GS, Croll TI, Morris JH, Ferrin TE. *Protein Sci.* 2021 Jan;30(1):70-82.
+
+- UCSF ChimeraX: Meeting modern challenges in visualization and analysis. Goddard TD, Huang CC, Meng EC, Pettersen EF, Couch GS, Morris JH, Ferrin TE. *Protein Sci.* 2018 Jan;27(1):14-25.
+
+### Structures used in demos
+
+- **[EMD-26566](https://www.ebi.ac.uk/emdb/EMD-26566)** (cube eraser demo): Newing TP, Brewster JL, Fitschen LJ, Bouwer JC, Johnston NP, Yu H, Tolun G. Red-mediated homologous DNA recombination. *Nat Commun.* (2022).
+
+- **[PDB 9CRD](https://www.rcsb.org/structure/9CRD)** (custom eraser demo): Ke Z, Peacock TP, Brown JC *et al.* Virion morphology and on-virus spike protein structures of diverse SARS-CoV-2 variants. *EMBO J* 43, 6469–6495 (2024). https://doi.org/10.1038/s44318-024-00303-1
 
 ## Acknowledgements
 
