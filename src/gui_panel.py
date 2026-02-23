@@ -46,21 +46,18 @@ class MapShapeEraserSettings(ToolInstance):
         center = b.center() if b else (0, 0, 0)
         initial = 0.2 * vradius
 
-        from .cube_eraser import CubeModel, CUBE_ERASER_COLOR
-        from .cylinder_eraser import CylinderModel, CYLINDER_ERASER_COLOR
+        from .cube_eraser import CUBE_ERASER_COLOR
+        from .cylinder_eraser import CYLINDER_ERASER_COLOR
         from .custom_eraser import CUSTOM_ERASER_COLOR
 
         self._cube_color = CUBE_ERASER_COLOR
         self._cyl_color = CYLINDER_ERASER_COLOR
         self._custom_color = CUSTOM_ERASER_COLOR
 
-        self._cube_model = CubeModel('eraser cube', session,
-                                     CUBE_ERASER_COLOR, center,
-                                     initial, initial, initial)
-        self._cylinder_model = CylinderModel('eraser cylinder', session,
-                                             CYLINDER_ERASER_COLOR, center,
-                                             initial, initial, initial)
-        self._cylinder_model.display = False
+        self._cube_model = None
+        self._cylinder_model = None
+        self._initial_center = center
+        self._initial_size = initial
 
         ToolInstance.__init__(self, session, tool_name)
         self.display_name = "Cube'n Tube"
@@ -285,7 +282,7 @@ class MapShapeEraserSettings(ToolInstance):
     def get_singleton(cls, session, create=True):
         from chimerax.core import tools
         return tools.get_singleton(session, MapShapeEraserSettings,
-                                   'CubeNTube', create=create)
+                                   "Cube'n Tube", create=create)
 
     def show(self):
         self.tool_window.shown = True
