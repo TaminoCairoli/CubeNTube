@@ -256,14 +256,17 @@ class CylinderModel(Surface):
         tris = []
 
         side_base = 0
-        slant_z = rb - rt
-        slant_len = math.sqrt(max(rb, rt) ** 2 + slant_z ** 2) or 1.0
+        dr = rb - rt
+        height = 2.0 * h
+        slant_len = math.sqrt(height ** 2 + dr ** 2) or 1.0
+        nr = height / slant_len
+        nz = dr / slant_len
         for i in range(n):
             j = (i + 1) % n
             cx0, sy0 = cos[i], sin[i]
             cx1, sy1 = cos[j], sin[j]
-            n0 = [cx0 / slant_len, sy0 / slant_len, slant_z / slant_len]
-            n1 = [cx1 / slant_len, sy1 / slant_len, slant_z / slant_len]
+            n0 = [nr * cx0, nr * sy0, nz]
+            n1 = [nr * cx1, nr * sy1, nz]
             idx = side_base + i * 4
             verts.extend([
                 [rb * cx0, rb * sy0, -h],
