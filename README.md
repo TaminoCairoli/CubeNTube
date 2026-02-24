@@ -18,7 +18,31 @@ A ChimeraX plugin that extends the built-in map eraser with three additional era
 
 ## Installation
 
+### Option A: Install via ChimeraX Toolshed command
 
+1. Install/update ChimeraX (version 1.11 or later): https://www.rbvi.ucsf.edu/chimerax/download.html
+2. Open ChimeraX and run in the command line:
+
+```
+toolshed reload all
+toolshed install ChimeraX-CubeNTube
+```
+
+3. Relaunch ChimeraX.
+
+### Option B: Install from GitHub (ZIP or clone)
+
+1. Download this repository as ZIP (or clone it).
+2. Extract it to a local folder, for example `CubeNTube-main`.
+3. In ChimeraX, run:
+
+```
+devel install /path/to/CubeNTube-main
+```
+
+4. Relaunch ChimeraX.
+
+If you update the source later, run `devel install /path/to/CubeNTube-main` again and relaunch.
 
 ## Usage
 
@@ -65,6 +89,10 @@ src/
 ```
 
 ## References
+
+### How to cite Cube'n Tube
+
+- Cairoli T. *Cube'n Tube* (Version 1.0.0) [Software]. Zenodo. https://doi.org/10.5281/zenodo.18754999
 
 ### Software
 
