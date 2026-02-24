@@ -15,10 +15,7 @@ All three are accessible from a single unified panel with a shape dropdown.
 
 ### Feature Overview
 
-<video src="https://raw.githubusercontent.com/TaminoCairoli/CubeNTube/main/demonstration_video/EraserLoop.mp4" autoplay loop muted playsinline controls width="100%"></video>
-
-Fallback download: [`demonstration_video/EraserLoop.mp4`](demonstration_video/EraserLoop.mp4)
-
+<video src="https://github.com/user-attachments/assets/606ca6fb-b00a-45e5-99f1-e16d6bb27770" autoplay loop muted playsinline controls width="100%"></video>
 
 ## Requirements
 
