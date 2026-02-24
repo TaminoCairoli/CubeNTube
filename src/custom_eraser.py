@@ -149,65 +149,6 @@ def _custom_grid_bounds(target_grid_data, shape_model, volume_scene_position):
     return ijk_min, ijk_max
 
 
-# -------------------------------------------------------------------------
-#
-from chimerax.mouse_modes import MouseMode
-
-
-class MapCustomEraser(MouseMode):
-    name = 'custom eraser'
-    icon_file = 'cubentube.png'
-
-    def __init__(self, session):
-        MouseMode.__init__(self, session)
-
-    @property
-    def settings(self):
-        from .gui_panel import map_shape_eraser_panel
-        return map_shape_eraser_panel(self.session)
-
-    def enable(self):
-        from chimerax.core.commands import run
-        run(self.session, 'ui tool show "CubeNTube"')
-        from .gui_panel import map_shape_eraser_panel
-        sp = map_shape_eraser_panel(self.session, create=False)
-        if sp is not None:
-            sp._shape_combo.setCurrentIndex(2)
-
-    def mouse_down(self, event):
-        MouseMode.mouse_down(self, event)
-
-    def mouse_drag(self, event):
-        dx, dy = self.mouse_motion(event)
-        settings = self.settings
-        sm = settings.custom_shape_model
-        if sm is None:
-            return
-        c = sm.scene_position.origin()
-        v = self.session.main_view
-        s = v.pixel_size(c)
-        if event.shift_down():
-            shift = (0, 0, s * dy)
-        else:
-            shift = (s * dx, -s * dy, 0)
-        dxyz = v.camera.position.transform_vector(shift)
-        settings.move_shape(dxyz)
-
-    def mouse_up(self, event):
-        MouseMode.mouse_up(self, event)
-
-    def vr_motion(self, event):
-        settings = self.settings
-        sm = settings.custom_shape_model
-        if sm is None:
-            return
-        c = sm.scene_position.origin()
-        delta_xyz = event.motion * c - c
-        settings.move_shape(delta_xyz)
-
-
-# -------------------------------------------------------------------------
-#
 from chimerax.core.models import Surface
 
 
@@ -257,9 +198,3 @@ class CustomShapeModel(Surface):
     def centroid(self):
         return self._centroid
 
-
-# -------------------------------------------------------------------------
-#
-def register_mousemode(session):
-    mm = session.ui.mouse_modes
-    mm.add_mode(MapCustomEraser(session))

@@ -7,7 +7,10 @@ class _CubeNTubeAPI(BundleAPI):
     def start_tool(session, tool_name):
         if tool_name == "CubeNTube":
             from .gui_panel import map_shape_eraser_panel
-            return map_shape_eraser_panel(session)
+            p = map_shape_eraser_panel(session)
+            if p is not None:
+                p.show()
+            return p
 
     @staticmethod
     def initialize(session, bundle_info):
@@ -15,41 +18,18 @@ class _CubeNTubeAPI(BundleAPI):
         if not session.ui.is_gui:
             return
         import traceback
-        # Cube eraser
+        # Register a single unified CubeNTube mouse mode.
         try:
-            from . import cube_eraser
-            reg = getattr(cube_eraser, 'register_mousemode', None)
-            if reg is not None:
-                reg(session)
-            else:
-                session.logger.warning('CubeNTube: cube_eraser has no register_mousemode.')
-        except Exception as e:
-            session.logger.warning('CubeNTube: cube eraser registration failed: %s' % e)
-            session.logger.info(traceback.format_exc())
-        # Cylinder eraser
-        try:
-            from . import cylinder_eraser
-            reg = getattr(cylinder_eraser, 'register_mousemode', None)
+            from . import gui_panel
+            reg = getattr(gui_panel, 'register_mousemode', None)
             if reg is not None:
                 reg(session)
             else:
                 session.logger.warning(
-                    'CubeNTube: cylinder_eraser has no register_mousemode (old install?).'
-                )
+                    'CubeNTube: gui_panel has no register_mousemode.')
         except Exception as e:
-            session.logger.warning('CubeNTube: cylinder eraser registration failed: %s' % e)
-            session.logger.info(traceback.format_exc())
-        # Custom eraser
-        try:
-            from . import custom_eraser
-            reg = getattr(custom_eraser, 'register_mousemode', None)
-            if reg is not None:
-                reg(session)
-            else:
-                session.logger.warning(
-                    'CubeNTube: custom_eraser has no register_mousemode.')
-        except Exception as e:
-            session.logger.warning('CubeNTube: custom eraser registration failed: %s' % e)
+            session.logger.warning(
+                'CubeNTube: unified mouse mode registration failed: %s' % e)
             session.logger.info(traceback.format_exc())
 
         # Patch built-in sphere eraser with single-step undo support

@@ -58,6 +58,7 @@ class MapShapeEraserSettings(ToolInstance):
         self._cylinder_model = None
         self._initial_center = center
         self._initial_size = initial
+        self._prev_right_mode = None
 
         ToolInstance.__init__(self, session, tool_name)
         self.display_name = "Cube'n Tube"
@@ -268,6 +269,7 @@ class MapShapeEraserSettings(ToolInstance):
 
     def delete(self):
         self.session.triggers.remove_handler(self._mdch)
+        self._restore_mouse_mode()
         for m in (self._cube_model, self._cylinder_model,
                   self._custom_shape_model):
             if m and not m.deleted:
@@ -286,9 +288,11 @@ class MapShapeEraserSettings(ToolInstance):
 
     def show(self):
         self.tool_window.shown = True
+        self._activate_mouse_mode()
 
     def hide(self):
         self.tool_window.shown = False
+        self._restore_mouse_mode()
 
     # ================================================================
     #  Active shape helpers
@@ -323,16 +327,6 @@ class MapShapeEraserSettings(ToolInstance):
                                self._custom_shape_model)):
             if m and not m.deleted:
                 m.display = show and (i == idx)
-
-        mode_names = ['cube', 'cylinder', 'custom eraser']
-        try:
-            mm = self.session.ui.mouse_modes
-            mode = mm.named_mode(mode_names[idx])
-            if mode is not None:
-                mm.bind_mouse_mode(mouse_button='right',
-                                   mouse_modifiers=[], mode=mode)
-        except Exception:
-            pass
 
     # ================================================================
     #  Show / Color (shared)
@@ -396,7 +390,7 @@ class MapShapeEraserSettings(ToolInstance):
         return self._custom_shape_model
 
     # ================================================================
-    #  Mouse-mode interface (called by MapCubeEraser, etc.)
+    #  Mouse-mode interface (used by unified MapShapeEraser mode)
     # ================================================================
 
     @property
@@ -426,6 +420,55 @@ class MapShapeEraserSettings(ToolInstance):
         dxyz = sm.scene_position.inverse().transform_vector(delta_xyz)
         from chimerax.geometry import translation
         sm.position = sm.position * translation(dxyz)
+
+    def move_active_shape(self, delta_xyz):
+        idx = self._active_index
+        if idx == _CUBE:
+            self.move_cube(delta_xyz)
+        elif idx == _CYLINDER:
+            self.move_cylinder(delta_xyz)
+        elif idx == _CUSTOM:
+            self.move_shape(delta_xyz)
+
+    def active_center(self):
+        idx = self._active_index
+        if idx == _CUBE:
+            return self.cube_center
+        if idx == _CYLINDER:
+            return self.cylinder_center
+        if idx == _CUSTOM:
+            sm = self._custom_shape_model
+            if sm is None or sm.deleted:
+                return None
+            return sm.scene_position.origin()
+        return None
+
+    def _activate_mouse_mode(self):
+        mm = self.session.ui.mouse_modes
+        shape_mode = mm.named_mode(MapShapeEraser.name)
+        if shape_mode is None:
+            return
+        current = mm.mode(button='right', modifiers=[], exact=True)
+        if current is shape_mode:
+            return
+        self._prev_right_mode = current
+        mm.bind_mouse_mode(mouse_button='right', mouse_modifiers=[],
+                           mode=shape_mode)
+
+    def _restore_mouse_mode(self):
+        mm = self.session.ui.mouse_modes
+        shape_mode = mm.named_mode(MapShapeEraser.name)
+        if shape_mode is None:
+            self._prev_right_mode = None
+            return
+        current = mm.mode(button='right', modifiers=[], exact=True)
+        if current is shape_mode:
+            restore = self._prev_right_mode
+            if restore is None:
+                restore = mm.named_mode('translate')
+            mm.bind_mouse_mode(mouse_button='right', mouse_modifiers=[],
+                               mode=restore)
+        self._prev_right_mode = None
 
     # ================================================================
     #  Cube slider callbacks
@@ -820,3 +863,61 @@ class MapShapeEraserSettings(ToolInstance):
 # -------------------------------------------------------------------------
 def map_shape_eraser_panel(session, create=True):
     return MapShapeEraserSettings.get_singleton(session, create=create)
+
+
+# -------------------------------------------------------------------------
+from chimerax.mouse_modes import MouseMode
+
+
+class MapShapeEraser(MouseMode):
+    """Single mouse mode that moves the currently selected CubeNTube shape."""
+
+    name = "cube'n tube"
+    icon_file = 'cubentube.png'
+
+    def __init__(self, session):
+        MouseMode.__init__(self, session)
+
+    @property
+    def settings(self):
+        return map_shape_eraser_panel(self.session)
+
+    def enable(self):
+        sp = map_shape_eraser_panel(self.session)
+        if sp is not None:
+            sp.show()
+
+    def mouse_down(self, event):
+        MouseMode.mouse_down(self, event)
+
+    def mouse_drag(self, event):
+        settings = self.settings
+        c = settings.active_center()
+        if c is None:
+            return
+        dx, dy = self.mouse_motion(event)
+        v = self.session.main_view
+        s = v.pixel_size(c)
+        if event.shift_down():
+            shift = (0, 0, s * dy)
+        else:
+            shift = (s * dx, -s * dy, 0)
+        dxyz = v.camera.position.transform_vector(shift)
+        settings.move_active_shape(dxyz)
+
+    def mouse_up(self, event):
+        MouseMode.mouse_up(self, event)
+
+    def vr_motion(self, event):
+        settings = self.settings
+        c = settings.active_center()
+        if c is None:
+            return
+        delta_xyz = event.motion * c - c
+        settings.move_active_shape(delta_xyz)
+
+
+# -------------------------------------------------------------------------
+def register_mousemode(session):
+    mm = session.ui.mouse_modes
+    mm.add_mode(MapShapeEraser(session))
