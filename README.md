@@ -13,6 +13,12 @@ A ChimeraX plugin that extends the built-in map eraser with three additional era
 
 All three are accessible from a single unified panel with a shape dropdown.
 
+### Feature Overview
+
+<video src="https://raw.githubusercontent.com/TaminoCairoli/CubeNTube/main/demonstration_video/EraserLoop.mp4" autoplay loop muted playsinline controls width="100%"></video>
+
+Fallback download: [`demonstration_video/EraserLoop.mp4`](demonstration_video/EraserLoop.mp4)
+
 
 ## Requirements
 

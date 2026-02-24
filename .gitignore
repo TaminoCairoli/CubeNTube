@@ -5,4 +5,5 @@ __pycache__/
 *.pyc
 INSTALL.txt
 ideas.txt
-demonstration_video/
+demonstration_video/*
+!demonstration_video/EraserLoop.mp4
