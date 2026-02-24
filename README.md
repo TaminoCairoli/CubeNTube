@@ -114,7 +114,7 @@ src/
 
 ### Structures used in demos
 
-- **[EMD-26566](https://www.ebi.ac.uk/emdb/EMD-26566)** (cube eraser demo): Newing TP, Brewster JL, Fitschen LJ, Bouwer JC, Johnston NP, Yu H, Tolun G. Red-mediated homologous DNA recombination. *Nat Commun.* (2022).
+- **[EMD-26566](https://www.ebi.ac.uk/emdb/EMD-26566)** (cube eraser demo): Newing TP, Brewster JL, Fitschen LJ, Bouwer JC, Johnston NP, Yu H, Tolun G. Red-mediated homologous DNA recombination. *Nat Commun.* (2022). https://doi.org/10.1038/s41467-022-33090-6
 
 - **[PDB 9CRD](https://www.rcsb.org/structure/9CRD)** (custom eraser demo): Ke Z, Peacock TP, Brown JC *et al.* Virion morphology and on-virus spike protein structures of diverse SARS-CoV-2 variants. *EMBO J* 43, 6469–6495 (2024). https://doi.org/10.1038/s44318-024-00303-1
 
