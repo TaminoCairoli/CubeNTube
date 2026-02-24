@@ -15,7 +15,7 @@ All three are accessible from a single unified panel with a shape dropdown.
 
 ### Shape Overview
 
-<video src="https://github.com/user-attachments/assets/606ca6fb-b00a-45e5-99f1-e16d6bb27770" autoplay loop muted playsinline controls width="100%"></video>
+<video src="https://github.com/user-attachments/assets/f74cec51-fb93-421b-8f4a-69defdaee019" autoplay loop muted playsinline controls width="100%"></video>
 
 ## Requirements
 
@@ -82,10 +82,10 @@ For the **Custom** eraser, first display an isosurface on the volume you want to
 
 1. Select the chains or atoms of interest
 2. In the ChimeraX command line type `molmap sel 9`
-  2.1. Choose a molmap filter suitable for your purpose
-  2.2. You can decrease the threshold of the molmap volume to make it smoother
-3. In the Cube'n Tube GUI panel, choose "custom" and select the newly generated volume as an eraser
-4. Click "erase outside"
+- Choose a molmap filter suitable for your purpose
+- You can decrease the threshold of the molmap volume to make it smoother
+4. In the Cube'n Tube GUI panel, choose "custom" and select the newly generated volume as an eraser
+5. Click "erase outside"
 
 ## Project Structure
 
