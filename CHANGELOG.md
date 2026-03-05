@@ -7,9 +7,8 @@ All notable changes to Cube'n Tube are documented in this file.
 ### New
 - Added a new **Dust Eraser** mode in Cube'n Tube.
 - Added a dust size-limit slider with live preview.
-- Added one-click **Erase dust** to create a cleaned map copy.
-- Added a real-time threshold slider for the custom eraser.
-- Added a fixed, non-movable dust preview model.
+
+- Added a real-time threshold slider for the **custom eraser**.
 
 ## 1.0.1
 
