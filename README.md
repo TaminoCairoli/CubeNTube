@@ -49,6 +49,10 @@ devel install /path/to/CubeNTube-main
 
 If you update the source later, run `devel install /path/to/CubeNTube-main` again and relaunch.
 
+## Release Notes
+
+Release history and change details are tracked in `CHANGELOG.md`.
+
 ## Usage
 
 After starting ChimeraX the **Cube'n Tube** button appears in the **Right Mouse > Map** toolbar section.

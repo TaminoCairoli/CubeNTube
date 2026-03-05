@@ -15,11 +15,11 @@ from .undo import VolumeEraseUndo
 
 
 # Index constants for the stacked widget pages
-_CUBE, _CYLINDER, _CUSTOM = 0, 1, 2
+_CUBE, _CYLINDER, _CUSTOM, _DUST = 0, 1, 2, 3
 
 
 class MapShapeEraserSettings(ToolInstance):
-    """Unified panel for cube, cylinder and custom volume erasers."""
+    """Unified panel for cube, cylinder, custom and dust volume erasers."""
 
     help = "help:user/tools/shapeeraser.html"
 
@@ -35,10 +35,24 @@ class MapShapeEraserSettings(ToolInstance):
         self._custom_shape_model = None
         self._mask_array = None
         self._mask_xyz_to_ijk = None
+        self._mask_matrix_id = None
         self._threshold = None
+        self._mask_volume = None
+        self._threshold_min = 0.0
+        self._threshold_max = 1.0
+        self._custom_contour_cache = {'level': None, 'matrix_id': None,
+                                      'verts': None, 'norms': None, 'tris': None}
 
         self._max_slider_scale = 5.0
         self._min_slider_scale = 0.1
+
+        # Dust state
+        self._dust_active = False
+        self._dust_highlight_model = None
+        self._dust_preview_data = None
+        self._dust_size_range = (1, 1000)
+        self._dust_last_level = None
+        self._dust_last_volume = None
 
         b = session.main_view.drawing_bounds()
         vradius = 100 if b is None else b.radius()
@@ -56,8 +70,6 @@ class MapShapeEraserSettings(ToolInstance):
 
         self._cube_model = None
         self._cylinder_model = None
-        self._initial_center = center
-        self._initial_size = initial
         self._prev_right_mode = None
 
         ToolInstance.__init__(self, session, tool_name)
@@ -100,7 +112,7 @@ class MapShapeEraserSettings(ToolInstance):
 
         tl.addWidget(QLabel('Shape:', tf))
         self._shape_combo = combo = QComboBox(tf)
-        combo.addItems(['Cube', 'Cylinder', 'Custom'])
+        combo.addItems(['Cube', 'Cylinder', 'Custom', 'Dust'])
         combo.currentIndexChanged.connect(self._shape_changed)
         tl.addWidget(combo)
         tl.addStretch(1)
@@ -218,6 +230,21 @@ class MapShapeEraserSettings(ToolInstance):
         vl.addWidget(sb)
         vl.addStretch(1)
 
+        thf = QFrame(cust_page)
+        cupl.addWidget(thf)
+        thl = QHBoxLayout(thf)
+        thl.setContentsMargins(0, 0, 0, 0)
+        thl.setSpacing(4)
+        thl.addWidget(QLabel('Threshold', thf))
+        self._threshold_entry = te = QLineEdit('0', thf)
+        te.setMaximumWidth(60)
+        te.returnPressed.connect(self._threshold_text_cb)
+        thl.addWidget(te)
+        self._threshold_slider = ths = QSlider(Qt.Horizontal, thf)
+        ths.setRange(0, smax)
+        ths.valueChanged.connect(self._threshold_slide_cb)
+        thl.addWidget(ths)
+
         sf = QFrame(cust_page)
         cupl.addWidget(sf)
         sl = QHBoxLayout(sf)
@@ -235,6 +262,35 @@ class MapShapeEraserSettings(ToolInstance):
         self._set_scale_slider(1.0)
         stack.addWidget(cust_page)
 
+        # -- Page 3: Dust --
+        dust_page = QFrame()
+        dpl = QVBoxLayout(dust_page)
+        dpl.setContentsMargins(0, 0, 0, 0)
+        dpl.setSpacing(0)
+
+        dvf = QFrame(dust_page)
+        dpl.addWidget(dvf)
+        dvl = QHBoxLayout(dvf)
+        dvl.setContentsMargins(0, 0, 0, 0)
+        dvl.setSpacing(10)
+        dvl.addWidget(QLabel('Dust surface:', dvf))
+        self._dust_volume_menu = ModelMenuButton(
+            session, class_filter=Volume,
+            no_value_button_text='Choose volume...')
+        dvl.addWidget(self._dust_volume_menu)
+        dvl.addStretch(1)
+
+        from chimerax.ui.widgets import LogSlider
+        self._dust_slider = LogSlider(
+            dust_page, label='Size limit',
+            range=self._dust_size_range,
+            value_change_cb=self._dust_size_changed,
+            release_cb=self._dust_slider_released)
+        dpl.addWidget(self._dust_slider.frame)
+        stack.addWidget(dust_page)
+
+        self._dust_frame_handler = None
+
         # ---- Bottom row: erase buttons ----
         ef = QFrame(parent)
         layout.addWidget(ef)
@@ -242,15 +298,15 @@ class MapShapeEraserSettings(ToolInstance):
         el.setContentsMargins(0, 0, 0, 0)
         el.setSpacing(30)
 
-        eb = QPushButton('Erase inside', ef)
+        self._erase_inside_btn = eb = QPushButton('Erase inside', ef)
         eb.clicked.connect(lambda: self._erase(outside=False))
         el.addWidget(eb)
 
-        eo = QPushButton('Erase outside', ef)
+        self._erase_outside_btn = eo = QPushButton('Erase outside', ef)
         eo.clicked.connect(lambda: self._erase(outside=True))
         el.addWidget(eo)
 
-        rb = QPushButton('Reduce map bounds', ef)
+        self._crop_btn = rb = QPushButton('Reduce map bounds', ef)
         rb.clicked.connect(self._crop_map)
         el.addWidget(rb)
 
@@ -259,9 +315,11 @@ class MapShapeEraserSettings(ToolInstance):
 
         tw.manage(placement='side')
 
-        from chimerax.core.models import MODEL_DISPLAY_CHANGED
+        from chimerax.core.models import MODEL_DISPLAY_CHANGED, MODEL_SELECTION_CHANGED
         self._mdch = session.triggers.add_handler(
             MODEL_DISPLAY_CHANGED, self._model_display_change)
+        self._msch = session.triggers.add_handler(
+            MODEL_SELECTION_CHANGED, self._model_selection_change)
 
     # ================================================================
     #  Lifecycle
@@ -269,15 +327,24 @@ class MapShapeEraserSettings(ToolInstance):
 
     def delete(self):
         self.session.triggers.remove_handler(self._mdch)
+        self.session.triggers.remove_handler(self._msch)
         self._restore_mouse_mode()
+        self._deactivate_dust()
         for m in (self._cube_model, self._cylinder_model,
-                  self._custom_shape_model):
+                  self._custom_shape_model, self._dust_highlight_model):
             if m and not m.deleted:
                 self.session.models.close([m])
         self._cube_model = None
         self._cylinder_model = None
         self._custom_shape_model = None
+        self._dust_highlight_model = None
+        self._dust_preview_data = None
         self._mask_array = None
+        self._mask_xyz_to_ijk = None
+        self._mask_matrix_id = None
+        self._mask_volume = None
+        self._custom_contour_cache = {'level': None, 'matrix_id': None,
+                                      'verts': None, 'norms': None, 'tris': None}
         ToolInstance.delete(self)
 
     @classmethod
@@ -318,9 +385,28 @@ class MapShapeEraserSettings(ToolInstance):
     # ================================================================
 
     def _shape_changed(self, idx):
+        prev_dust = self._dust_active
+        if prev_dust and idx != _DUST:
+            self._deactivate_dust()
+
         self._stack.setCurrentIndex(idx)
-        colors = [self._cube_color, self._cyl_color, self._custom_color]
-        self._color_btn.color = colors[idx]
+
+        if idx == _DUST:
+            self._activate_dust()
+            self._erase_inside_btn.setText('Erase dust')
+            self._erase_outside_btn.setVisible(False)
+            self._crop_btn.setVisible(False)
+            self._show_cb.setVisible(False)
+            self._color_btn.setVisible(False)
+        else:
+            self._erase_inside_btn.setText('Erase inside')
+            self._erase_outside_btn.setVisible(True)
+            self._crop_btn.setVisible(True)
+            self._show_cb.setVisible(True)
+            self._color_btn.setVisible(True)
+            colors = [self._cube_color, self._cyl_color, self._custom_color]
+            if idx < len(colors):
+                self._color_btn.color = colors[idx]
 
         show = self._show_cb.isChecked()
         for i, m in enumerate((self._cube_model, self._cylinder_model,
@@ -333,12 +419,16 @@ class MapShapeEraserSettings(ToolInstance):
     # ================================================================
 
     def _show_eraser_cb(self, state):
+        if self._active_index == _DUST:
+            return
         m = self._active_model
         if m and not m.deleted:
             m.display = bool(state)
 
     def _change_color_cb(self, color):
         idx = self._active_index
+        if idx == _DUST:
+            return
         if idx == _CUBE:
             self._cube_color = tuple(color)
         elif idx == _CYLINDER:
@@ -397,29 +487,25 @@ class MapShapeEraserSettings(ToolInstance):
     def cube_center(self):
         return self.cube_model.scene_position.origin()
 
-    def move_cube(self, delta_xyz):
-        cm = self.cube_model
-        dxyz = cm.scene_position.inverse().transform_vector(delta_xyz)
+    def _move_model(self, model, delta_xyz):
+        if model is None or model.deleted:
+            return
+        dxyz = model.scene_position.inverse().transform_vector(delta_xyz)
         from chimerax.geometry import translation
-        cm.position = cm.position * translation(dxyz)
+        model.position = model.position * translation(dxyz)
+
+    def move_cube(self, delta_xyz):
+        self._move_model(self.cube_model, delta_xyz)
 
     @property
     def cylinder_center(self):
         return self.cylinder_model.scene_position.origin()
 
     def move_cylinder(self, delta_xyz):
-        cm = self.cylinder_model
-        dxyz = cm.scene_position.inverse().transform_vector(delta_xyz)
-        from chimerax.geometry import translation
-        cm.position = cm.position * translation(dxyz)
+        self._move_model(self.cylinder_model, delta_xyz)
 
     def move_shape(self, delta_xyz):
-        sm = self._custom_shape_model
-        if sm is None or sm.deleted:
-            return
-        dxyz = sm.scene_position.inverse().transform_vector(delta_xyz)
-        from chimerax.geometry import translation
-        sm.position = sm.position * translation(dxyz)
+        self._move_model(self._custom_shape_model, delta_xyz)
 
     def move_active_shape(self, delta_xyz):
         idx = self._active_index
@@ -493,68 +579,46 @@ class MapShapeEraserSettings(ToolInstance):
         cm.size_y = s
         cm.size_z = s
 
-    def _cube_size_x_text(self):
+    def _cube_size_text(self, axis):
         if self._block_text_update:
             return
-        s = self._cube_size_val('x')
+        s = self._cube_size_val(axis)
         if self._lock_dimensions:
-            self._cube_set_all(s); return
-        self.cube_model.size_x = s
+            self._cube_set_all(s)
+            return
+        setattr(self.cube_model, 'size_' + axis, s)
         self._block_text_update = True
-        self._cube_size_x_slider.setValue(
+        getattr(self, '_cube_size_%s_slider' % axis).setValue(
             int((s / self._max_slider_size) * self._max_slider_value))
         self._block_text_update = False
+
+    def _cube_size_slide(self, axis, val):
+        if self._block_text_update:
+            return
+        s = (val / self._max_slider_value) * self._max_slider_size
+        if self._lock_dimensions:
+            self._cube_set_all(s)
+            return
+        getattr(self, '_cube_size_%s_entry' % axis).setText('%.4g' % s)
+        setattr(self.cube_model, 'size_' + axis, s)
+
+    def _cube_size_x_text(self):
+        self._cube_size_text('x')
 
     def _cube_size_y_text(self):
-        if self._block_text_update:
-            return
-        s = self._cube_size_val('y')
-        if self._lock_dimensions:
-            self._cube_set_all(s); return
-        self.cube_model.size_y = s
-        self._block_text_update = True
-        self._cube_size_y_slider.setValue(
-            int((s / self._max_slider_size) * self._max_slider_value))
-        self._block_text_update = False
+        self._cube_size_text('y')
 
     def _cube_size_z_text(self):
-        if self._block_text_update:
-            return
-        s = self._cube_size_val('z')
-        if self._lock_dimensions:
-            self._cube_set_all(s); return
-        self.cube_model.size_z = s
-        self._block_text_update = True
-        self._cube_size_z_slider.setValue(
-            int((s / self._max_slider_size) * self._max_slider_value))
-        self._block_text_update = False
+        self._cube_size_text('z')
 
     def _cube_size_x_slide(self, val):
-        if self._block_text_update:
-            return
-        s = (val / self._max_slider_value) * self._max_slider_size
-        if self._lock_dimensions:
-            self._cube_set_all(s); return
-        self._cube_size_x_entry.setText('%.4g' % s)
-        self.cube_model.size_x = s
+        self._cube_size_slide('x', val)
 
     def _cube_size_y_slide(self, val):
-        if self._block_text_update:
-            return
-        s = (val / self._max_slider_value) * self._max_slider_size
-        if self._lock_dimensions:
-            self._cube_set_all(s); return
-        self._cube_size_y_entry.setText('%.4g' % s)
-        self.cube_model.size_y = s
+        self._cube_size_slide('y', val)
 
     def _cube_size_z_slide(self, val):
-        if self._block_text_update:
-            return
-        s = (val / self._max_slider_value) * self._max_slider_size
-        if self._lock_dimensions:
-            self._cube_set_all(s); return
-        self._cube_size_z_entry.setText('%.4g' % s)
-        self.cube_model.size_z = s
+        self._cube_size_slide('z', val)
 
     def _cube_lock_toggled(self, state):
         self._lock_dimensions = bool(state)
@@ -652,14 +716,34 @@ class MapShapeEraserSettings(ToolInstance):
     #  Custom eraser callbacks
     # ================================================================
 
+    def _clear_custom_contour_cache(self):
+        self._custom_contour_cache = {'level': None, 'matrix_id': None,
+                                      'verts': None, 'norms': None, 'tris': None}
+
+    def _custom_contour_at_level(self, volume, level):
+        from .custom_eraser import contour_from_array
+        matrix_id = getattr(volume, '_matrix_id', None)
+        c = self._custom_contour_cache
+        if c['matrix_id'] == matrix_id and c['level'] == level:
+            return c['verts'], c['norms'], c['tris']
+        verts, norms, tris = contour_from_array(
+            volume.matrix(), level, volume.matrix_indices_to_xyz_transform())
+        c['matrix_id'] = matrix_id
+        c['level'] = level
+        c['verts'] = verts
+        c['norms'] = norms
+        c['tris'] = tris
+        self._mask_matrix_id = matrix_id
+        return verts, norms, tris
+
     def _set_eraser_cb(self):
         vol = self._volume_menu.value
         if vol is None:
             self.session.logger.warning('No volume selected.')
             return
-        from .custom_eraser import _extract_isosurface, CustomShapeModel
-        verts, norms, tris, threshold = _extract_isosurface(vol)
-        if verts is None:
+        from .custom_eraser import CustomShapeModel
+        threshold = vol.minimum_surface_level
+        if threshold is None:
             self.session.logger.warning(
                 'Selected volume has no displayed isosurface. '
                 'Display an isosurface first (e.g. volume #%s level <value>).'
@@ -668,14 +752,25 @@ class MapShapeEraserSettings(ToolInstance):
 
         self._mask_array = vol.data.full_matrix().copy()
         self._mask_xyz_to_ijk = vol.data.xyz_to_ijk_transform
+        self._clear_custom_contour_cache()
+        verts, norms, tris = self._custom_contour_at_level(vol, threshold)
+        if verts is None or tris is None or len(tris) == 0:
+            self.session.logger.warning(
+                'Could not contour selected volume at level %.4g.' % threshold)
+            return
         self._threshold = threshold
+        self._mask_volume = vol
+
+        data = self._mask_array
+        self._threshold_min = float(data.min())
+        self._threshold_max = float(data.max())
 
         old = self._custom_shape_model
         if old and not old.deleted:
             self.session.models.close([old])
 
         centroid = verts.mean(axis=0)
-        centered_verts = verts - centroid
+        centered_verts = (verts - centroid.astype(verts.dtype, copy=False)) * np.float32(1.03)
         from chimerax.geometry import translation
         eraser_pos = vol.scene_position * translation(centroid)
 
@@ -687,6 +782,8 @@ class MapShapeEraserSettings(ToolInstance):
         self._block_text_update = True
         self._scale_entry.setText('1.0')
         self._set_scale_slider(1.0)
+        self._threshold_entry.setText('%.4g' % threshold)
+        self._set_threshold_slider(threshold)
         self._block_text_update = False
 
         from chimerax.core.commands import run
@@ -729,6 +826,179 @@ class MapShapeEraserSettings(ToolInstance):
             sm.scale = s
 
     # ================================================================
+    #  Custom eraser threshold callbacks
+    # ================================================================
+
+    def _set_threshold_slider(self, t):
+        rng = self._threshold_max - self._threshold_min
+        if rng == 0:
+            self._threshold_slider.setValue(0)
+            return
+        frac = (t - self._threshold_min) / rng
+        frac = max(0.0, min(1.0, frac))
+        self._threshold_slider.setValue(int(frac * self._max_slider_value))
+
+    def _threshold_text_cb(self):
+        if self._block_text_update:
+            return
+        try:
+            t = float(self._threshold_entry.text())
+            t = max(self._threshold_min, min(t, self._threshold_max))
+        except ValueError:
+            return
+        self._block_text_update = True
+        self._set_threshold_slider(t)
+        self._block_text_update = False
+        self._update_custom_threshold(t)
+
+    def _threshold_slide_cb(self, val):
+        if self._block_text_update:
+            return
+        frac = val / self._max_slider_value
+        t = self._threshold_min + frac * (self._threshold_max - self._threshold_min)
+        self._threshold_entry.setText('%.4g' % t)
+        self._update_custom_threshold(t)
+
+    def _update_custom_threshold(self, new_threshold):
+        sm = self._custom_shape_model
+        if sm is None or sm.deleted:
+            return
+        mv = self._mask_volume
+        if self._mask_array is None or mv is None or mv.deleted:
+            return
+
+        current_matrix_id = getattr(mv, '_matrix_id', None)
+        if self._mask_matrix_id != current_matrix_id:
+            self._clear_custom_contour_cache()
+        verts, norms, tris = self._custom_contour_at_level(mv, new_threshold)
+        if verts is not None and len(verts) > 0:
+            centered = (verts - sm.centroid.astype(verts.dtype, copy=False)) * np.float32(1.03)
+            sm.update_mesh(centered, norms, tris)
+            self._threshold = new_threshold
+
+    # ================================================================
+    #  Dust eraser callbacks
+    # ================================================================
+
+    def _dust_volume(self):
+        """Return the volume selected in the dust dropdown."""
+        v = self._dust_volume_menu.value
+        if v is None or v.deleted:
+            return None
+        return v
+
+    def _update_dust_slider_range(self):
+        v = self._dust_volume()
+        if v is None:
+            return
+        min_size = min(v.data.step)
+        r = (min_size, 1000 * min_size)
+        if r != self._dust_size_range:
+            self._dust_size_range = r
+            self._dust_slider.set_range(r[0], r[1])
+
+    def _activate_dust(self):
+        v = self._dust_volume()
+        if v is None:
+            v = self._shown_volume()
+            if v is not None:
+                self._dust_volume_menu.value = v
+        self._update_dust_slider_range()
+        self._dust_slider.value = 6 * self._dust_size_range[0]
+        self._dust_active = True
+        self._dust_last_level = None
+        self._dust_last_volume = None
+        self._apply_dust_hiding()
+        if self._dust_frame_handler is None:
+            self._dust_frame_handler = self.session.triggers.add_handler(
+                'new frame', self._dust_refresh_check)
+
+    def _deactivate_dust(self):
+        if not self._dust_active:
+            return
+        self._dust_active = False
+        if self._dust_frame_handler is not None:
+            self.session.triggers.remove_handler(self._dust_frame_handler)
+            self._dust_frame_handler = None
+        self._dust_preview_data = None
+        self._close_dust_highlight()
+
+    def _dust_size_changed(self, size, slider_down):
+        if self._dust_active:
+            self._apply_dust_hiding()
+
+    def _dust_slider_released(self):
+        pass
+
+    def _apply_dust_hiding(self):
+        v = self._dust_volume()
+        if v is None:
+            return
+        from .dust_eraser import create_dust_highlight
+        self._dust_highlight_model, self._dust_preview_data = create_dust_highlight(
+            self.session, v, self._dust_slider.value, self._dust_highlight_model)
+        self._dust_last_level = v.minimum_surface_level
+        self._dust_last_volume = v
+
+    def _dust_refresh_check(self, *_):
+        """Per-frame check: refresh highlight if surface level or volume changed."""
+        if not self._dust_active:
+            return
+        v = self._dust_volume()
+        if v is None:
+            return
+        hm = self._dust_highlight_model
+        if hm is not None and not hm.deleted:
+            vpos = v.scene_position
+            if hm.position != vpos:
+                hm.position = vpos
+
+        old_v = self._dust_last_volume
+        if v is not old_v:
+            self._update_dust_slider_range()
+            self._dust_preview_data = None
+            self._apply_dust_hiding()
+        elif v.minimum_surface_level != self._dust_last_level:
+            self._dust_preview_data = None
+            self._apply_dust_hiding()
+
+    def _close_dust_highlight(self):
+        hm = self._dust_highlight_model
+        if hm is not None and not hm.deleted:
+            self.session.models.close([hm])
+        self._dust_highlight_model = None
+        self._dust_preview_data = None
+
+    def _erase_dust(self):
+        v = self._dust_volume()
+        if v is None:
+            self.session.logger.warning(
+                'No volume selected for dust erase')
+            return
+
+        from .dust_eraser import compute_dust_voxel_mask
+        mask = compute_dust_voxel_mask(
+            v, self._dust_slider.value, self._dust_preview_data)
+        if mask is None:
+            self.session.logger.info('No dust voxels to erase.')
+            return
+
+        vcopy = v.writable_copy()
+        grid_data = vcopy.data
+        saved = grid_data.full_matrix().copy()
+        grid_data.full_matrix()[mask] = 0
+        grid_data.values_changed()
+
+        self._register_undo('dust erase', grid_data, saved)
+
+        self._close_dust_highlight()
+        self._dust_preview_data = None
+
+        self._dust_volume_menu.value = vcopy
+        self._dust_last_volume = vcopy
+        self._dust_last_level = None
+
+    # ================================================================
     #  Slider range adjustment
     # ================================================================
 
@@ -736,6 +1006,11 @@ class MapShapeEraserSettings(ToolInstance):
         v = self._shown_volume()
         if v:
             self._adjust_slider_range(v)
+
+    def _model_selection_change(self, name, data):
+        hm = self._dust_highlight_model
+        if hm is not None and not hm.deleted and hm.selected:
+            hm.selected = False
 
     def _adjust_slider_range(self, volume):
         xyz_min, xyz_max = volume.xyz_bounds(subregion='all')
@@ -749,6 +1024,9 @@ class MapShapeEraserSettings(ToolInstance):
 
     def _erase(self, outside=False):
         idx = self._active_index
+        if idx == _DUST:
+            self._erase_dust()
+            return
         if idx == _CUSTOM:
             self._erase_custom(outside)
         else:
@@ -765,18 +1043,19 @@ class MapShapeEraserSettings(ToolInstance):
         saved = grid_data.full_matrix().copy()
 
         idx = self._active_index
+        changed = False
         if idx == _CUBE:
             from .cube_eraser import _erase_with_cube_model
-            _erase_with_cube_model(grid_data, self.cube_model,
-                                   v.scene_position, value=0,
-                                   outside=outside)
+            changed = _erase_with_cube_model(grid_data, self.cube_model,
+                                             v.scene_position, value=0,
+                                             outside=outside)
         elif idx == _CYLINDER:
             from .cylinder_eraser import _erase_with_cylinder_model
-            _erase_with_cylinder_model(grid_data, self.cylinder_model,
-                                       v.scene_position, value=0,
-                                       outside=outside)
+            changed = _erase_with_cylinder_model(grid_data, self.cylinder_model,
+                                                 v.scene_position, value=0,
+                                                 outside=outside)
 
-        if np.array_equal(saved, grid_data.full_matrix()):
+        if not changed:
             return
         self._register_undo('shape erase', grid_data, saved)
 
@@ -799,14 +1078,14 @@ class MapShapeEraserSettings(ToolInstance):
         saved = grid_data.full_matrix().copy()
 
         from .custom_eraser import _erase_with_custom_shape
-        _erase_with_custom_shape(
+        changed = _erase_with_custom_shape(
             grid_data, sm, v.scene_position,
             self._mask_array, self._mask_xyz_to_ijk,
             sm.centroid, sm.scale,
             self._threshold,
             value=0, outside=outside)
 
-        if np.array_equal(saved, grid_data.full_matrix()):
+        if not changed:
             return
         self._register_undo('custom erase', grid_data, saved)
 
@@ -844,6 +1123,10 @@ class MapShapeEraserSettings(ToolInstance):
             from .custom_eraser import _custom_grid_bounds
             ijk_min, ijk_max = _custom_grid_bounds(
                 v.data, sm, v.scene_position)
+        elif idx == _DUST:
+            self.session.logger.warning(
+                'Crop is not applicable for dust mode.')
+            return
         else:
             return
         region = ','.join(['%d,%d,%d' % tuple(ijk_min),
@@ -854,10 +1137,15 @@ class MapShapeEraserSettings(ToolInstance):
 
     def _shown_volume(self):
         from chimerax.map import Volume
-        sm = self._custom_shape_model
-        vlist = [m for m in self.session.models.list(type=Volume)
-                 if m.visible and m is not sm]
-        return vlist[0] if len(vlist) == 1 else None
+        exclude = {self._custom_shape_model, self._dust_highlight_model}
+        only_visible = None
+        for m in self.session.models.list(type=Volume):
+            if not m.visible or m in exclude:
+                continue
+            if only_visible is not None:
+                return None
+            only_visible = m
+        return only_visible
 
 
 # -------------------------------------------------------------------------

@@ -10,8 +10,13 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
 
 import numpy as np
+from .grid_math import ijk_region_scene_xyz
 
-CYLINDER_ERASER_COLOR = (255, 153, 204, 128)  # transparent pink (matches sphere eraser)
+CYLINDER_ERASER_COLOR = (255, 153, 204, 128)  # transparent pink
+_CYLINDER_SIDES = 36
+_CYL_ANGLES = np.linspace(0.0, 2.0 * np.pi, _CYLINDER_SIDES, endpoint=False)
+_CYL_COS = np.cos(_CYL_ANGLES).astype(np.float32)
+_CYL_SIN = np.sin(_CYL_ANGLES).astype(np.float32)
 
 
 # -------------------------------------------------------------------------
@@ -49,6 +54,7 @@ def _erase_with_cylinder_model(grid_data, cylinder_model, volume_scene_position,
     Core erase logic for cylinder. Rotation-safe and vectorized.
     Transforms: volume_local -> scene -> cylinder_local, then tests cylindrical bounds.
     For "erase outside" the full grid is used so all voxels outside the shape are zeroed.
+    Returns True iff at least one voxel value is changed.
     '''
     from chimerax.map_data import GridSubregion
     from numpy import putmask
@@ -71,21 +77,8 @@ def _erase_with_cylinder_model(grid_data, cylinder_model, volume_scene_position,
         nj = ijk_max[1] - ijk_min[1] + 1
         nk = ijk_max[2] - ijk_min[2] + 1
 
-    i_vals = ijk_min[0] + np.arange(ni, dtype=np.float64)
-    j_vals = ijk_min[1] + np.arange(nj, dtype=np.float64)
-    k_vals = ijk_min[2] + np.arange(nk, dtype=np.float64)
-    ii, jj, kk = np.meshgrid(i_vals, j_vals, k_vals, indexing='ij')
-    ijk_points = np.column_stack([ii.ravel(), jj.ravel(), kk.ravel()])
-
-    origin = np.array(grid_data.origin, dtype=np.float64)
-    step = np.array(grid_data.step, dtype=np.float64)
-    if hasattr(grid_data, 'rotation') and grid_data.rotation is not None:
-        grid_rotation = np.array(grid_data.rotation, dtype=np.float64)
-        volume_xyz = origin + np.dot(ijk_points * step, grid_rotation.T)
-    else:
-        volume_xyz = origin + ijk_points * step
-
-    scene_xyz = volume_scene_position.transform_points(volume_xyz)
+    scene_xyz = ijk_region_scene_xyz(
+        grid_data, volume_scene_position, ijk_min, ni, nj, nk)
     cyl_local = scene_to_cyl.transform_points(scene_xyz)
 
     z = cyl_local[:, 2]
@@ -104,9 +97,13 @@ def _erase_with_cylinder_model(grid_data, cylinder_model, volume_scene_position,
     mask = np.transpose(mask, (2, 1, 0))
     if outside:
         mask = ~mask
+    changed = bool(np.any(mask & (dmatrix != value)))
+    if not changed:
+        return False
     putmask(dmatrix, mask, value)
 
     grid_data.values_changed()
+    return True
 
 
 # -------------------------------------------------------------------------
@@ -132,8 +129,8 @@ def _cylinder_grid_bounds(grid_data, cylinder_model, volume_scene_position):
 
     cyl_to_scene = cylinder_model.scene_position
     scene_to_volume = volume_scene_position.inverse()
-    corners_scene = np.array([cyl_to_scene * c for c in corners_local])
-    corners_volume = np.array([scene_to_volume * c for c in corners_scene])
+    corners_scene = cyl_to_scene.transform_points(corners_local)
+    corners_volume = scene_to_volume.transform_points(corners_scene)
 
     xyz_min = corners_volume.min(axis=0)
     xyz_max = corners_volume.max(axis=0)
@@ -193,39 +190,55 @@ class CylinderModel(Surface):
         rt = self._radius_top
         rb = self._radius_bottom
         h = self._length / 2.0
-        n = 36
-
-        cos = [math.cos(2 * math.pi * i / n) for i in range(n)]
-        sin = [math.sin(2 * math.pi * i / n) for i in range(n)]
+        n = _CYLINDER_SIDES
+        cos = _CYL_COS
+        sin = _CYL_SIN
+        next_idx = (np.arange(n, dtype=np.int32) + 1) % n
 
         verts = []
         norms = []
         tris = []
 
-        side_base = 0
         dr = rb - rt
         height = 2.0 * h
         slant_len = math.sqrt(height ** 2 + dr ** 2) or 1.0
         nr = height / slant_len
         nz = dr / slant_len
-        for i in range(n):
-            j = (i + 1) % n
-            cx0, sy0 = cos[i], sin[i]
-            cx1, sy1 = cos[j], sin[j]
-            n0 = [nr * cx0, nr * sy0, nz]
-            n1 = [nr * cx1, nr * sy1, nz]
-            idx = side_base + i * 4
-            verts.extend([
-                [rb * cx0, rb * sy0, -h],
-                [rb * cx1, rb * sy1, -h],
-                [rt * cx0, rt * sy0,  h],
-                [rt * cx1, rt * sy1,  h],
-            ])
-            norms.extend([n0, n1, n0, n1])
-            tris.extend([
-                [idx, idx + 1, idx + 2],
-                [idx + 2, idx + 1, idx + 3],
-            ])
+        side_verts = np.empty((n, 4, 3), dtype=np.float32)
+        side_verts[:, 0, 0] = rb * cos
+        side_verts[:, 0, 1] = rb * sin
+        side_verts[:, 0, 2] = -h
+        side_verts[:, 1, 0] = rb * cos[next_idx]
+        side_verts[:, 1, 1] = rb * sin[next_idx]
+        side_verts[:, 1, 2] = -h
+        side_verts[:, 2, 0] = rt * cos
+        side_verts[:, 2, 1] = rt * sin
+        side_verts[:, 2, 2] = h
+        side_verts[:, 3, 0] = rt * cos[next_idx]
+        side_verts[:, 3, 1] = rt * sin[next_idx]
+        side_verts[:, 3, 2] = h
+        verts.extend(side_verts.reshape(-1, 3))
+
+        side_norms = np.empty((n, 4, 3), dtype=np.float32)
+        side_norms[:, 0, 0] = nr * cos
+        side_norms[:, 0, 1] = nr * sin
+        side_norms[:, 0, 2] = nz
+        side_norms[:, 1, 0] = nr * cos[next_idx]
+        side_norms[:, 1, 1] = nr * sin[next_idx]
+        side_norms[:, 1, 2] = nz
+        side_norms[:, 2, :] = side_norms[:, 0, :]
+        side_norms[:, 3, :] = side_norms[:, 1, :]
+        norms.extend(side_norms.reshape(-1, 3))
+
+        base = (np.arange(n, dtype=np.int32) * 4)
+        side_tris = np.empty((n, 2, 3), dtype=np.int32)
+        side_tris[:, 0, 0] = base
+        side_tris[:, 0, 1] = base + 1
+        side_tris[:, 0, 2] = base + 2
+        side_tris[:, 1, 0] = base + 2
+        side_tris[:, 1, 1] = base + 1
+        side_tris[:, 1, 2] = base + 3
+        tris.extend(side_tris.reshape(-1, 3))
 
         bot_base = len(verts)
         bot_center_idx = bot_base

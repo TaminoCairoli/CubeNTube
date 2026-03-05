@@ -10,36 +10,30 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
 
 import numpy as np
+from .grid_math import ijk_region_scene_xyz
 
-CUSTOM_ERASER_COLOR = (255, 153, 204, 128)  # transparent pink (matches sphere eraser)
+CUSTOM_ERASER_COLOR = (255, 153, 204, 128)  # transparent pink
 
 
-# -------------------------------------------------------------------------
-#
-def _extract_isosurface(volume):
+def contour_from_array(matrix, level, ijk_to_xyz_transform):
     '''
-    Extract isosurface mesh and metadata from a Volume.
-    Returns (vertices, normals, triangles, threshold) or (None,)*4.
-    Vertices are in the volume's local xyz coordinate system.
+    Compute an isosurface directly from a 3D numpy array using ChimeraX's
+    built-in marching cubes.
+    *matrix*: 3D array (k,j,i ordering, same as Volume.data.full_matrix()).
+    *level*: isosurface threshold.
+    *ijk_to_xyz_transform*: Place that maps array indices to volume xyz coords.
+    Returns (vertices_xyz, normals_xyz, triangles) or (None, None, None).
     '''
-    threshold = volume.minimum_surface_level
-    if threshold is None:
-        return None, None, None, None
+    from chimerax.map._map import contour_surface
+    varray, tarray, narray = contour_surface(matrix, level,
+                                             cap_faces=True,
+                                             calculate_normals=True)
+    if varray is None or len(varray) == 0:
+        return None, None, None
 
-    surfs = volume.surfaces
-    if not surfs:
-        return None, None, None, None
-
-    surf = surfs[0]
-    verts = surf.vertices
-    tris = surf.triangles
-    if verts is None or tris is None or len(verts) == 0:
-        return None, None, None, None
-
-    from chimerax.surface import calculate_vertex_normals
-    norms = calculate_vertex_normals(verts, tris)
-
-    return verts.copy(), norms.copy(), tris.copy(), threshold
+    ijk_to_xyz_transform.transform_points(varray, in_place=True)
+    ijk_to_xyz_transform.transform_normals(narray, in_place=True)
+    return varray, narray, tarray
 
 
 # -------------------------------------------------------------------------
@@ -51,6 +45,7 @@ def _erase_with_custom_shape(target_grid_data, shape_model, volume_scene_positio
     Erase target volume using a custom volume shape as the mask.
     For each target voxel: scene -> eraser-local -> unscale -> mask-volume xyz
     -> sample mask data -> compare threshold.
+    Returns True iff at least one voxel value is changed.
     '''
     from chimerax.map_data import GridSubregion, interpolate_volume_data
     from numpy import putmask
@@ -68,21 +63,8 @@ def _erase_with_custom_shape(target_grid_data, shape_model, volume_scene_positio
         nj = ijk_max[1] - ijk_min[1] + 1
         nk = ijk_max[2] - ijk_min[2] + 1
 
-    i_vals = ijk_min[0] + np.arange(ni, dtype=np.float64)
-    j_vals = ijk_min[1] + np.arange(nj, dtype=np.float64)
-    k_vals = ijk_min[2] + np.arange(nk, dtype=np.float64)
-    ii, jj, kk = np.meshgrid(i_vals, j_vals, k_vals, indexing='ij')
-    ijk_points = np.column_stack([ii.ravel(), jj.ravel(), kk.ravel()])
-
-    origin = np.array(target_grid_data.origin, dtype=np.float64)
-    step = np.array(target_grid_data.step, dtype=np.float64)
-    if hasattr(target_grid_data, 'rotation') and target_grid_data.rotation is not None:
-        grid_rotation = np.array(target_grid_data.rotation, dtype=np.float64)
-        volume_xyz = origin + np.dot(ijk_points * step, grid_rotation.T)
-    else:
-        volume_xyz = origin + ijk_points * step
-
-    scene_xyz = volume_scene_position.transform_points(volume_xyz)
+    scene_xyz = ijk_region_scene_xyz(
+        target_grid_data, volume_scene_position, ijk_min, ni, nj, nk)
 
     scene_to_eraser = shape_model.scene_position.inverse()
     eraser_local = scene_to_eraser.transform_points(scene_xyz)
@@ -101,9 +83,13 @@ def _erase_with_custom_shape(target_grid_data, shape_model, volume_scene_positio
     mask = np.transpose(mask, (2, 1, 0))
     if outside:
         mask = ~mask
+    changed = bool(np.any(mask & (dmatrix != value)))
+    if not changed:
+        return False
     putmask(dmatrix, mask, value)
 
     target_grid_data.values_changed()
+    return True
 
 
 # -------------------------------------------------------------------------
@@ -133,8 +119,8 @@ def _custom_grid_bounds(target_grid_data, shape_model, volume_scene_position):
 
     eraser_to_scene = shape_model.scene_position
     scene_to_volume = volume_scene_position.inverse()
-    corners_scene = np.array([eraser_to_scene * c for c in corners_local])
-    corners_volume = np.array([scene_to_volume * c for c in corners_scene])
+    corners_scene = eraser_to_scene.transform_points(corners_local)
+    corners_volume = scene_to_volume.transform_points(corners_scene)
 
     xyz_min = corners_volume.min(axis=0)
     xyz_max = corners_volume.max(axis=0)
@@ -165,9 +151,9 @@ class CustomShapeModel(Surface):
         '''
         Surface.__init__(self, name, session)
 
-        self._base_vertices = centered_vertices.astype(np.float32)
-        self._base_normals = normals.astype(np.float32)
-        self._base_triangles = triangles.astype(np.int32)
+        self._base_vertices = np.asarray(centered_vertices, dtype=np.float32)
+        self._base_normals = np.asarray(normals, dtype=np.float32)
+        self._base_triangles = np.asarray(triangles, dtype=np.int32)
         self._centroid = np.array(centroid, dtype=np.float64)
         self._scale = 1.0
 
@@ -177,7 +163,10 @@ class CustomShapeModel(Surface):
         session.models.add([self])
 
     def _update_geometry(self):
-        verts = self._base_vertices * self._scale
+        if self._scale == 1.0:
+            verts = self._base_vertices
+        else:
+            verts = self._base_vertices * np.float32(self._scale)
         self.set_geometry(verts, self._base_normals, self._base_triangles)
 
     @property
@@ -197,4 +186,11 @@ class CustomShapeModel(Surface):
     @property
     def centroid(self):
         return self._centroid
+
+    def update_mesh(self, centered_vertices, normals, triangles):
+        '''Replace mesh geometry (vertices already centered at origin).'''
+        self._base_vertices = np.asarray(centered_vertices, dtype=np.float32)
+        self._base_normals = np.asarray(normals, dtype=np.float32)
+        self._base_triangles = np.asarray(triangles, dtype=np.int32)
+        self._update_geometry()
 
