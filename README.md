@@ -3,15 +3,16 @@
   Cube'n Tube — Shape Erasers for ChimeraX
 </h1>
 
-A ChimeraX plugin that extends the built-in map eraser with three additional eraser shapes: **cube**, **cylinder**, and **custom volume**. It also enables **undo/redo** for erasing!
+A ChimeraX plugin that extends the built-in map eraser with additional eraser shapes: **cube**, **cylinder**, **dust**, and **custom volume**. It also enables **undo/redo** for erasing!
 ## Features
 
 - **Cube eraser** — axis-independent box with adjustable X/Y/Z dimensions and optional lock to scale uniformly
 - **Cylinder eraser** — frustum with independent top/bottom radii and length, optional radius lock
+- **Dust eraser** — remove dust particles from the map permanently
 - **Custom eraser** — use any displayed volume isosurface as the eraser shape, with uniform scaling
 - **Single-step undo** (Cmd+Z / Ctrl+Z) for all eraser shapes, including the built-in sphere eraser
 
-All three are accessible from a single unified panel with a shape dropdown.
+All erasers are accessible from a single unified panel with a shape dropdown.
 
 ### Shape Overview
 
