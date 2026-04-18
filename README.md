@@ -109,7 +109,7 @@ src/
 
 ### How to cite Cube'n Tube
 
-- Cairoli T. *Cube'n Tube* (Version 1.1.0) [Software]. Zenodo. https://doi.org/10.5281/zenodo.19480499
+- Cairoli T. *Cube'n Tube* (Version 1.1.0). (2026). https://doi.org/10.5281/zenodo.19480499
 
 ### Software
 
